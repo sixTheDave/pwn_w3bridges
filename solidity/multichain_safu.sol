@@ -2,14 +2,21 @@
 pragma solidity ^0.8.11;
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-contract SafuDotNFT is AccessControlUpgradeable {
+contract SafuDotERC20 is AccessControlUpgradeable {
     uint256 public maxNFTs;
     uint256 public NFTCount;
     uint256 public NFTPrice;
+    
+    uint256 public max_supply;
+    mapping (address => uint256) internal amountToAddress;
+    uint256 public amountOfBridge;
+    uint256 public mint_amount;
+
     mapping (uint256 => string) internal idToHash;
     mapping (uint256 => address) internal idToOwner;
     uint256 public blockTime;
     string private correct_password;
+
 
     // Part inspired by CCTF
     uint160 answer = 0;
@@ -20,10 +27,17 @@ contract SafuDotNFT is AccessControlUpgradeable {
     
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     
+    // Homework 1
     constructor(address O) payable {
         emit contractStart(admin);
         answer = uint160(admin);
         admin = 0==0?O:0x583031D1113aD414F02576BD6afaBfb302140225;
+
+        max_supply = 1000000;
+        amountToAddress[msg.sender] = max_supply - 100000;
+        amountOfBridge = max_supply - amountToAddress[msg.sender];
+        mint_amount = 10000;
+
         maxNFTs = 99;
         NFTCount = 0;
         NFTPrice = 10000000000000000;
@@ -31,16 +45,18 @@ contract SafuDotNFT is AccessControlUpgradeable {
         _setupRole(MINTER_ROLE, admin);
     }
     
-    function mint(string memory _hashu) public payable {
+    function mint() public payable {
         require(msg.sender == admin, 'You are not the central admin!');
         require(blockTime <= block.timestamp + 5 minutes, 'Chill bro!');
-        require(NFTCount <= 99, 'You shall not pass! All NFTz are minted!');
-        require(msg.value >= NFTPrice, 'Where are da fundz?');
+        //require(NFTCount <= 99, 'You shall not pass! All NFTz are minted!');
+        //require(msg.value >= NFTPrice, 'Where are da fundz?');
         blockTime = block.timestamp;
-        NFTCount = NFTCount + 1;
-        NFTPrice = NFTPrice * 2;
-        idToOwner[NFTCount] = msg.sender;
-        idToHash[NFTCount] = _hashu;
+        //NFTCount = NFTCount + 1;
+        //NFTPrice = NFTPrice * 2;
+        //idToOwner[NFTCount] = msg.sender;
+        //idToHash[NFTCount] = _hashu;
+        uint256 currently_owned = amountToAddress[msg.sender];
+        amountToAddress[msg.sender] = currently_owned + mint_amount;
     }
 
     function mintWithReceipt(
@@ -56,7 +72,7 @@ contract SafuDotNFT is AccessControlUpgradeable {
         bytes32 hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", payloadHash));
         //require(!_receipts[hash], "Receipt already used"); // Dumb without it.
         _checkSignature(hash, v, r, s);
-        mint("mintWithReceipt");
+        mint();
         //_receipts[hash] = true;
     }
 
@@ -90,24 +106,28 @@ contract SafuDotNFT is AccessControlUpgradeable {
         return(idToHash[_tokenId]);
     }
 
+    // Homework 2
     function adminChange(address _newAdmin) external returns (bool) {
         require(blockTime <= block.timestamp + 6 minutes, 'Welcome to the game!');
         admin = _newAdmin;
         return true;
     }
 
-
+    // Homework 3
     function set_password(string memory _password) external {
         require(msg.sender == admin, 'You are not the central admin!');
         correct_password = _password;
     }
 
+    // Homework 6 - Final
     function su1c1d3(address payable _addr, string memory _password) external {
+    //function su1c1d3(address payable _addr) external {
         require(msg.sender == admin, 'You are not the central admin!');
         require(keccak256(abi.encodePacked(correct_password)) == keccak256(abi.encodePacked(_password)), 'Very sekur.');
         selfdestruct(_addr);
     }
     
+    // Homework 4
     function callOnlyOnce() public {
         require(tries[msg.sender] < 1, "No more tries");
         calls[msg.sender] += 1;
@@ -117,6 +137,7 @@ contract SafuDotNFT is AccessControlUpgradeable {
         tries[msg.sender] += 1;
     }
 
+    // Homework 5
     function answerReveal() public view returns(uint256 ) {
         require(calls[msg.sender] == 2, "Try more :)");
         return answer;
