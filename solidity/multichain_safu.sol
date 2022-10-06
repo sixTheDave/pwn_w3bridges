@@ -1,31 +1,25 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity ^0.8.11;
+// Challenges inspired by CCTF
+pragma solidity ^0.8.17;
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 contract SafuDotERC20 is AccessControlUpgradeable {
-    uint256 public maxNFTs;
-    uint256 public NFTCount;
-    uint256 public NFTPrice;
     
     uint256 public max_supply;
     mapping (address => uint256) internal amountToAddress;
     uint256 public amountOfBridge;
     uint256 public mint_amount;
-
-    mapping (uint256 => string) internal idToHash;
-    mapping (uint256 => address) internal idToOwner;
-    uint256 public blockTime;
     string private correct_password;
+    //mapping(bytes32 => bool) public hashes;
 
-
-    // Part inspired by CCTF
     uint160 answer = 0;
     address private admin = 0xdD870fA1b7C4700F2BD7f44238821C26f7392148;
     event contractStart(address indexed _admin);
     mapping(address => uint256) public calls;
     mapping(address => uint256) public tries;
     
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    //bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    mapping(address => bool) public minter;
     
     // Homework 1
     constructor(address O) payable {
@@ -37,26 +31,11 @@ contract SafuDotERC20 is AccessControlUpgradeable {
         amountToAddress[msg.sender] = max_supply - 100000;
         amountOfBridge = max_supply - amountToAddress[msg.sender];
         mint_amount = 10000;
-
-        maxNFTs = 99;
-        NFTCount = 0;
-        NFTPrice = 10000000000000000;
-        blockTime = block.timestamp;
-        _setupRole(MINTER_ROLE, admin);
+        minter[msg.sender] = true;
     }
     
-    function mint() public payable {
-        require(msg.sender == admin, 'You are not the central admin!');
-        require(blockTime <= block.timestamp + 5 minutes, 'Chill bro!');
-        //require(NFTCount <= 99, 'You shall not pass! All NFTz are minted!');
-        //require(msg.value >= NFTPrice, 'Where are da fundz?');
-        blockTime = block.timestamp;
-        //NFTCount = NFTCount + 1;
-        //NFTPrice = NFTPrice * 2;
-        //idToOwner[NFTCount] = msg.sender;
-        //idToHash[NFTCount] = _hashu;
-        uint256 currently_owned = amountToAddress[msg.sender];
-        amountToAddress[msg.sender] = currently_owned + mint_amount;
+    function mint() internal {
+        amountToAddress[msg.sender] = amountToAddress[msg.sender] + mint_amount;
     }
 
     function mintWithReceipt(
@@ -83,13 +62,13 @@ contract SafuDotERC20 is AccessControlUpgradeable {
         bytes32 s
     ) internal view {
         address signer = ecrecover(hash, v, r, s);
-        require(hasRole(MINTER_ROLE, signer), "Signature invalid");
+        require(minter[signer] == true, "Not minter");
     }
 
 
-    function transfer(uint256 _tokenId, address _toAddress) external {
-        require(msg.sender == idToOwner[_tokenId], 'But it is not yours!');
-        idToOwner[_tokenId] = _toAddress;
+    function transfer(uint256 _value, address _toAddress) external {
+        require(amountToAddress[msg.sender] - _value >= 0, 'Oooops');
+        amountToAddress[_toAddress] = amountToAddress[_toAddress] + _value;
     }
 
     function adminWithdraw() external returns (bool) {
@@ -98,36 +77,27 @@ contract SafuDotERC20 is AccessControlUpgradeable {
         return sent;
     }
 
-    function WhoGotchaThat(uint256 _whichOne) public view returns (address) {
-        return(idToOwner[_whichOne]);
-    }
 
-    function WhatIsTheHash(uint256 _tokenId) public view returns (string memory){
-        return(idToHash[_tokenId]);
-    }
-
-    // Homework 2
+    // Easypeasy
     function adminChange(address _newAdmin) external returns (bool) {
-        require(blockTime <= block.timestamp + 6 minutes, 'Welcome to the game!');
         admin = _newAdmin;
         return true;
     }
 
-    // Homework 3
+    // Homework 2
     function set_password(string memory _password) external {
         require(msg.sender == admin, 'You are not the central admin!');
         correct_password = _password;
     }
 
-    // Homework 6 - Final
+    // Homework 5 - Final
     function su1c1d3(address payable _addr, string memory _password) external {
-    //function su1c1d3(address payable _addr) external {
         require(msg.sender == admin, 'You are not the central admin!');
         require(keccak256(abi.encodePacked(correct_password)) == keccak256(abi.encodePacked(_password)), 'Very sekur.');
         selfdestruct(_addr);
     }
     
-    // Homework 4
+    // Homework 3
     function callOnlyOnce() public {
         require(tries[msg.sender] < 1, "No more tries");
         calls[msg.sender] += 1;
@@ -137,7 +107,7 @@ contract SafuDotERC20 is AccessControlUpgradeable {
         tries[msg.sender] += 1;
     }
 
-    // Homework 5
+    // Homework 4
     function answerReveal() public view returns(uint256 ) {
         require(calls[msg.sender] == 2, "Try more :)");
         return answer;
