@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# Eth ECDSA key generator, signer and arg recovery for web3 hacking
+# Eth ECDSA key generator, signer and arg recovery for web3 hacking // Modified for Hacktivity workshop
 # Author: six
 # References: https://web3py.readthedocs.io/en/stable/web3.eth.account.html?highlight=sign#sign-a-message
 # Ethereum Private Keys Directory -> https://privatekeys.pw/keys/ethereum/1
@@ -84,7 +84,7 @@ parser.add_argument("-s", "--sol", help="Print solidity code for ecrecover", act
 args = parser.parse_args()
 
 if args.dgen:
-    forv = generate("Anything","0000000000000000000000000000000000000000000000000000000000000001") # hex|0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf
+    forv = generate("Anything","0000000000000000000000000000000000000000000000000000000000000006") # hex|0xE57bFE9F44b819898F47BF37E5AF72a0783e1141
     gen_vrs(forv)
     sys.exit()
 if args.rgen:
@@ -107,6 +107,6 @@ if args.sol:
     print_sol_recovery()
     sys.exit()
 
-forv = generate("Anything","0000000000000000000000000000000000000000000000000000000000000001") # hex|0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf
+forv = generate("Anything","0000000000000000000000000000000000000000000000000000000000000006") # hex|0xE57bFE9F44b819898F47BF37E5AF72a0783e1141
 gen_vrs(forv)
 print("\nNo arguments were provided. You can use --help.")

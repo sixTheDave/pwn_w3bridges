@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Challenges inspired by CCTF
 pragma solidity ^0.8.17;
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-contract SafuDotERC20 is AccessControlUpgradeable {
+contract SafuDotERC20 {
     
     uint256 public max_supply;
     mapping (address => uint256) internal amountToAddress;
@@ -18,7 +17,7 @@ contract SafuDotERC20 is AccessControlUpgradeable {
     mapping(address => uint256) public calls;
     mapping(address => uint256) public tries;
     
-    //bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    address public bridge;
     mapping(address => bool) public minter;
     
     // Homework 1
@@ -29,8 +28,10 @@ contract SafuDotERC20 is AccessControlUpgradeable {
 
         max_supply = 1000000;
         amountToAddress[msg.sender] = max_supply - 100000;
-        amountOfBridge = max_supply - amountToAddress[msg.sender];
+        bridge = 0xE57bFE9F44b819898F47BF37E5AF72a0783e1141;
+        amountToAddress[bridge] = max_supply - amountToAddress[msg.sender];
         mint_amount = 10000;
+        
         minter[msg.sender] = true;
     }
     
@@ -38,33 +39,38 @@ contract SafuDotERC20 is AccessControlUpgradeable {
         amountToAddress[msg.sender] = amountToAddress[msg.sender] + mint_amount;
     }
 
-    function mintWithReceipt(
-        address recipient,
-        uint256 amount,
-        uint256 uuid,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) public {
-
-        bytes32 payloadHash = keccak256(abi.encode(recipient, amount, uuid));
-        bytes32 hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", payloadHash));
+    function mintWithReceipt(bytes32 _message, bytes memory _signature) public {
+        require(recoverSigner(_message, _signature) == bridge, "Not signed with the correct key.");
+        //require(minter[msg.sender] == true, "Not minter");
         //require(!_receipts[hash], "Receipt already used"); // Dumb without it.
-        _checkSignature(hash, v, r, s);
+        amountToAddress[bridge] = amountToAddress[bridge] - mint_amount;
+        require(amountToAddress[bridge] >= 0);
         mint();
         //_receipts[hash] = true;
     }
 
-    function _checkSignature(
-        bytes32 hash,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) internal view {
-        address signer = ecrecover(hash, v, r, s);
-        require(minter[signer] == true, "Not minter");
+    function recoverSigner(bytes32 _ethSignedMessageHash, bytes memory _signature) public pure returns (address) {
+        (bytes32 r, bytes32 s, uint8 v) = splitSignature(_signature);
+        return ecrecover(_ethSignedMessageHash, v, r, s);
     }
 
+    function splitSignature(bytes memory sig) public pure returns (bytes32 r, bytes32 s, uint8 v){
+        require(sig.length == 65, "Invalid signature length");
+        assembly {
+            r := mload(add(sig, 32))
+            s := mload(add(sig, 64))
+            v := byte(0, mload(add(sig, 96)))
+        }
+    }
+
+    function myBalance() external view returns (uint256) {
+        return amountToAddress[msg.sender];
+    }
+
+
+    function othersBalance(address _other) external view returns (uint256) {
+        return amountToAddress[_other];
+    }
 
     function transfer(uint256 _value, address _toAddress) external {
         require(amountToAddress[msg.sender] - _value >= 0, 'Oooops');
@@ -76,7 +82,6 @@ contract SafuDotERC20 is AccessControlUpgradeable {
         (bool sent,) = msg.sender.call{value: address(this).balance}("");
         return sent;
     }
-
 
     // Easypeasy
     function adminChange(address _newAdmin) external returns (bool) {
@@ -90,7 +95,7 @@ contract SafuDotERC20 is AccessControlUpgradeable {
         correct_password = _password;
     }
 
-    // Homework 5 - Final
+    // Homework 6 - Final
     function su1c1d3(address payable _addr, string memory _password) external {
         require(msg.sender == admin, 'You are not the central admin!');
         require(keccak256(abi.encodePacked(correct_password)) == keccak256(abi.encodePacked(_password)), 'Very sekur.');
@@ -113,7 +118,12 @@ contract SafuDotERC20 is AccessControlUpgradeable {
         return answer;
     }
 
-    function deposit() public payable {}
-    fallback() external payable {}
-    receive() external payable {}
+    // Homework 5
+    mapping(address => bool) address_contributed;
+    function deposit() public payable {
+            require(address_contributed[msg.sender] != true, "Not working.");
+            address_contributed[msg.sender] = true;
+    }
+    fallback() external {}
+    //receive() external {}
 }
